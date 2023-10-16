@@ -33,6 +33,18 @@ class FilePost(models.Model):
     def total_comments(self):
         return CommentFilePost.objects.filter(file_post=self).count()
 
+    @property
+    def liked_users(self):
+        return User.objects.filter(likefilepost__file_post=self)
+
+    @property
+    def viewed_users(self):
+        return User.objects.filter(viewfilepost__file_post=self)
+
+    @property
+    def shared_users(self):
+        return User.objects.filter(sharefilepost__file_post=self)
+
 
 class ViewFilePost(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
@@ -43,6 +55,7 @@ class ViewFilePost(models.Model):
 
     class Meta:
         unique_together = ('user', 'file_post')
+
 
 
 class LikeFilePost(models.Model):

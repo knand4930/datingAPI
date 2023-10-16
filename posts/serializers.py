@@ -38,13 +38,18 @@ class CommentFilePostSerializer(serializers.ModelSerializer):
 
 class FilePostSerializer(serializers.ModelSerializer):
     total_views = serializers.SerializerMethodField()
-    total_likes = serializers.SerializerMethodField()
-    total_share = serializers.SerializerMethodField()
-    total_comments = serializers.SerializerMethodField()
-
-    liked_by = serializers.SerializerMethodField()
     viewed_by = serializers.SerializerMethodField()
+    viewed_users = serializers.SerializerMethodField()
+
+    total_likes = serializers.SerializerMethodField()
+    liked_by = serializers.SerializerMethodField()
+    liked_users = serializers.SerializerMethodField()
+
+    total_share = serializers.SerializerMethodField()
+    shared_users = serializers.SerializerMethodField()
     shared_by = serializers.SerializerMethodField()
+
+    total_comments = serializers.SerializerMethodField()
     comments = CommentFilePostSerializer(many=True)
 
     class Meta:
@@ -60,12 +65,28 @@ class FilePostSerializer(serializers.ModelSerializer):
     def get_total_comments(self, obj):
         return obj.total_comments
 
+    def get_comments(self, obj):
+        comments = CommentFilePost.objects.filter(file_post=obj, parent_comment=None)
+        return CommentFilePostSerializer(comments, many=True).data
+
     def get_total_share(self, obj):
         return ShareFilePost.objects.filter(file_post=obj).count()
+
     def get_liked_by(self, obj):
         liked_users = LikeFilePost.objects.filter(file_post=obj).values_list('user', flat=True)
         return liked_users
 
+    def get_liked_users(self, obj):
+        liked_users = obj.likefilepost_set.all()
+        return [user.user.first_name + " " + user.user.last_name for user in liked_users]
+
+    def get_viewed_users(self, obj):
+        viewed_users = obj.viewfilepost_set.all()
+        return [user.user.first_name + " " + user.user.last_name for user in viewed_users]
+
+    def get_shared_users(self, obj):
+        shared_users = obj.sharefilepost_set.all()
+        return [user.user.first_name + " " + user.user.last_name for user in shared_users]
 
     def get_viewed_by(self, obj):
         viewed_users = ViewFilePost.objects.filter(file_post=obj).values_list('user', flat=True)
@@ -76,7 +97,22 @@ class FilePostSerializer(serializers.ModelSerializer):
         return shared_users
 
 
+class FilePostDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FilePost
+        fields = "__all__"
 
-    def get_comments(self, obj):
-        comments = CommentFilePost.objects.filter(file_post=obj, parent_comment=None)
-        return CommentFilePostSerializer(comments, many=True).data
+    def create(self, validated_data):
+        user = self.context['request'].user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Login the Applications !")
+        value = validated_data(**validated_data)
+        value.user = user
+        value.save()
+        return value
+
+
+class FilePostUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FilePost
+        fields = "__all__"
